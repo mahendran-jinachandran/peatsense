@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: peatsense
+      POSTGRES_USER: peatsense
+      POSTGRES_PASSWORD: peatsense123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peatsense"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    build: ./mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - mlflow_data:/mlflow
+
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - media_data:/app/media
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  mlflow_data:
+  media_data:
