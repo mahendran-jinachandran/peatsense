@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# Install system dependencies needed for rasterio
 RUN apt-get update && apt-get install -y \
     gcc \
+    g++ \
     gdal-bin \
     libgdal-dev \
     libpq-dev \
@@ -11,11 +11,16 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+
+RUN pip install --no-cache-dir numpy==1.26.4
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+# Make sure entrypoint is executable
 RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
