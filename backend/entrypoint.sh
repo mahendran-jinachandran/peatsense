@@ -23,6 +23,9 @@ else:
 echo "Seeding sample data..."
 python manage.py seed_data
 
+echo "Registering MLflow model..."
+python manage.py register_model
+
 echo "Starting Gunicorn..."
 gunicorn config.wsgi:application \
     --bind 0.0.0.0:8000 \

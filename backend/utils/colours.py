@@ -93,6 +93,7 @@ def colourise(
     n_clusters: int,
     scheme: str = 'default'
 ) -> Tuple[np.ndarray, dict]:
+    
     colours   = get_colours(n_clusters, scheme)
     height, width = predictions.shape
     rgb_image = np.zeros((height, width, 3), dtype=np.uint8)
