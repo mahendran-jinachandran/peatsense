@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir --upgrade pip wheel
 
 RUN pip install --no-cache-dir numpy==1.26.4
 
@@ -20,7 +20,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Make sure entrypoint is executable
 RUN chmod +x entrypoint.sh
 
 EXPOSE 8000

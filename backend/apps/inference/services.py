@@ -28,15 +28,6 @@ TARGET_CRS    = 'EPSG:4326'
 EXPERIMENT_NAME = 'peatsense-inference'
 
 class InferenceService:
-    """
-    Handles the complete KMeans inference pipeline:
-    1. Load model from MLflow
-    2. Read and preprocess raster pixels
-    3. Run KMeans prediction
-    4. Colourise the result
-    5. Generate output PNG
-    6. Log everything to MLflow
-    """
 
     @staticmethod
     def run(job) -> dict:
@@ -115,3 +106,71 @@ class InferenceService:
             job.error_message = str(e)
             job.save()
             raise
+    
+    @staticmethod
+    def _read_raster(file_path: str):
+ 
+        with rasterio.open(file_path) as src:
+            transform, width, height = calculate_default_transform(
+                src.crs,
+                TARGET_CRS,
+                src.width,
+                src.height,
+                *src.bounds
+            )
+
+            reprojected_bands = []
+            for band_index in range(1, src.count + 1):
+                destination = np.zeros((height, width), dtype=np.uint8)
+                reproject(
+                    source      = rasterio.band(src, band_index),
+                    destination = destination,
+                    src_transform = src.transform,
+                    src_crs       = src.crs,
+                    dst_transform = transform,
+                    dst_crs       = TARGET_CRS,
+                    resampling    = Resampling.nearest,
+                )
+                reprojected_bands.append(destination)
+
+            bounds_wgs84 = transform_bounds(
+                src.crs, TARGET_CRS, *src.bounds
+            )
+
+        if len(reprojected_bands) >= 3:
+            image_array = np.dstack([
+                reprojected_bands[0],
+                reprojected_bands[1],
+                reprojected_bands[2],
+            ])
+        else:
+            image_array = np.dstack([reprojected_bands[0]] * 3)
+
+        shape = (height, width)
+
+        pixels_2d = image_array.reshape(-1, image_array.shape[2])
+
+        bounds = {
+            'west':  bounds_wgs84[0],
+            'south': bounds_wgs84[1],
+            'east':  bounds_wgs84[2],
+            'north': bounds_wgs84[3],
+        }
+
+        return pixels_2d, shape, bounds
+
+    @staticmethod
+    def _save_result_png(rgb_array: np.ndarray, job_id: int) -> str:
+        results_dir = os.path.join(settings.MEDIA_ROOT, 'inference_results')
+        os.makedirs(results_dir, exist_ok=True)
+
+        filename      = f'result_job_{job_id}.png'
+        absolute_path = os.path.join(results_dir, filename)
+        relative_path = os.path.join('inference_results', filename)
+
+        image = Image.fromarray(rgb_array.astype(np.uint8), 'RGB')
+        image.save(absolute_path, format='PNG')
+
+        logger.info(f'Result PNG saved: {absolute_path}')
+
+        return relative_path
