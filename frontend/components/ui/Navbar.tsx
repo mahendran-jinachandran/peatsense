@@ -30,7 +30,7 @@ export default function Navbar({
       {/* Right side */}
       <div className="flex items-center gap-3">
 
-        {user?.is_staff && onUpload && (
+        {user && onUpload && (
           <button
             onClick={onUpload}
             className="px-3 py-1.5 bg-white text-green-700

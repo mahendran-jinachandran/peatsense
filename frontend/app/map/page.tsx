@@ -1,13 +1,15 @@
 'use client'
 
+import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { useAuth }      from '@/hooks/useAuth'
 import { useDatasets }  from '@/hooks/useDatasets'
 import { useMapLayers } from '@/hooks/useMapLayers'
 import { useInference } from '@/hooks/useInference'
-import Navbar  from '@/components/ui/Navbar'
-import Sidebar from '@/components/sidebar/Sidebar'
-import Legend  from '@/components/legend/Legend'
+import Navbar       from '@/components/ui/Navbar'
+import Sidebar      from '@/components/sidebar/Sidebar'
+import Legend       from '@/components/legend/Legend'
+import UploadModal  from '@/components/ui/UploadModal'
 
 const MapView = dynamic(
   () => import('@/components/map/MapView'),
@@ -24,6 +26,7 @@ const MapView = dynamic(
 export default function MapPage() {
 
   const { user, logout } = useAuth()
+  const [showUpload, setShowUpload] = useState(false)
 
   const {
     datasets,
@@ -57,6 +60,7 @@ export default function MapPage() {
       <Navbar
         user={user}
         onLogout={logout}
+        onUpload={() => setShowUpload(true)}
       />
 
       <div className="flex flex-1 overflow-hidden">
@@ -96,6 +100,14 @@ export default function MapPage() {
         </div>
 
       </div>
+
+      {showUpload && (
+        <UploadModal
+          onClose={() => setShowUpload(false)}
+          onSuccess={refetch}
+        />
+      )}
+
     </div>
   )
 }
