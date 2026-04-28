@@ -2,7 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { api, setTokens, clearTokens, getAccessToken } from '@/services/api'
+import {
+  api,
+  setTokens,
+  clearTokens,
+  getAccessToken,
+  getStoredRefreshToken,
+} from '@/services/api'
 import type { User, LoginCredentials } from '@/types'
 
 export const useAuth = () => {
@@ -14,22 +20,40 @@ export const useAuth = () => {
 
   useEffect(() => {
     const checkAuth = async () => {
+
       const token = getAccessToken()
 
-      if (!token) {
-        setIsLoading(false)
-        return
+      if (token) {
+        try {
+          const userData = await api.auth.me()
+          setUser(userData)
+          setIsLoading(false)
+          return
+        } catch {
+          // Access token invalid — fall through to refresh
+        }
       }
 
-      try {
-        const userData = await api.auth.me()
-        setUser(userData)
-      } catch {
-        clearTokens()
-        setUser(null)
-      } finally {
-        setIsLoading(false)
+      const storedRefresh = getStoredRefreshToken()
+      if (storedRefresh) {
+        try {
+
+          const newAccessToken = await api.auth.refreshToken(storedRefresh)
+          setTokens({
+            access:  newAccessToken,
+            refresh: storedRefresh,
+          })
+
+          const userData = await api.auth.me()
+          setUser(userData)
+
+        } catch {
+          clearTokens()
+          setUser(null)
+        }
       }
+
+      setIsLoading(false)
     }
 
     checkAuth()
@@ -38,7 +62,6 @@ export const useAuth = () => {
   const login = useCallback(async (
     credentials: LoginCredentials
   ): Promise<void> => {
-    
     const tokens = await api.auth.login(credentials)
     setTokens(tokens)
     const userData = await api.auth.me()

@@ -10,20 +10,26 @@ import type {
   ColourSchemesResponse,
 } from '@/types'
 
-let accessToken:  string | null = null
-let refreshToken: string | null = null
+let accessToken: string | null = null
+
+const REFRESH_TOKEN_KEY = 'peatsense_refresh_token'
 
 export const setTokens = (tokens: AuthTokens): void => {
-  accessToken  = tokens.access
-  refreshToken = tokens.refresh
+  accessToken = tokens.access
+  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refresh)
 }
 
 export const clearTokens = (): void => {
-  accessToken  = null
-  refreshToken = null
+  accessToken = null
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
 }
 
 export const getAccessToken = (): string | null => accessToken
+
+export const getStoredRefreshToken = (): string | null => {
+  if (typeof window === 'undefined') return null
+  return localStorage.getItem(REFRESH_TOKEN_KEY)
+}
 
 const axiosInstance = axios.create({
   baseURL: '',
@@ -45,20 +51,21 @@ axiosInstance.interceptors.response.use(
   response => response,
   async error => {
     const originalRequest = error.config
+    const storedRefresh   = getStoredRefreshToken()
 
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      refreshToken
+      storedRefresh
     ) {
       originalRequest._retry = true
 
       try {
         const response = await axios.post('/api/auth/token/refresh/', {
-          refresh: refreshToken,
+          refresh: storedRefresh,
         })
         const newAccessToken = response.data.access
-        accessToken = newAccessToken
+        accessToken          = newAccessToken
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
         return axiosInstance(originalRequest)
 
