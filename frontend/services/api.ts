@@ -81,7 +81,11 @@ export const api = {
       return response.data
     },
 
-    register: async (credentials: LoginCredentials): Promise<void> => {
+    register: async (credentials: {
+      username: string
+      password: string
+      email?:   string
+    }): Promise<void> => {
       await axiosInstance.post('/api/auth/register/', credentials)
     },
 
@@ -136,10 +140,16 @@ export const api = {
       formData.append('description',  payload.description)
       formData.append('dataset_type', payload.dataset_type)
       formData.append('file',         payload.file)
-      const response = await axiosInstance.post(
-        '/api/datasets/upload/',
+
+      const response = await axios.post(
+        'http://localhost:8000/api/datasets/upload/',
         formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        {
+          headers: {
+            'Content-Type':  'multipart/form-data',
+            'Authorization': accessToken ? `Bearer ${accessToken}` : '',
+          },
+        }
       )
       return response.data
     },

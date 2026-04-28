@@ -1,7 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-
   reactStrictMode: false,
+
+  serverExternalPackages: [],
+
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '100mb',
+    },
+  },
+
   async rewrites() {
     return [
       {
