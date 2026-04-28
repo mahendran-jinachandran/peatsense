@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from django.db import models as db_models
 from .models import Dataset
 from .serializers import (
     DatasetListSerializer,
@@ -17,20 +17,33 @@ from .serializers import (
 )
 from .services import RasterService, VectorService
 
-
 class DatasetListView(APIView):
-    """
-    GET /api/datasets/
-    Public endpoint — lists all visible datasets.
-    No login required.
-    """
     permission_classes = [AllowAny]
 
     def get(self, request):
-        datasets = Dataset.objects.filter(
-            is_visible=True,
-            upload_status='completed'
-        )
+        
+        if request.user.is_authenticated and request.user.is_staff:
+            # Admin sees everything
+            datasets = Dataset.objects.filter(
+                upload_status='completed'
+            ).select_related('uploaded_by')
+
+        elif request.user.is_authenticated:
+            # Regular user sees public + own datasets
+            datasets = Dataset.objects.filter(
+                upload_status='completed'
+            ).filter(
+                db_models.Q(is_visible=True) |
+                db_models.Q(uploaded_by=request.user)
+            ).select_related('uploaded_by')
+
+        else:
+            # Not logged in — public only
+            datasets = Dataset.objects.filter(
+                is_visible=True,
+                upload_status='completed'
+            ).select_related('uploaded_by')
+
         serializer = DatasetListSerializer(datasets, many=True)
         return Response(serializer.data)
 

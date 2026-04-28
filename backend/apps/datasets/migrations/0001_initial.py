@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                 ('description', models.TextField(blank=True, default='')),
                 ('dataset_type', models.CharField(choices=[('raster', 'Raster'), ('vector', 'Vector')], max_length=10)),
                 ('file', models.FileField(upload_to='uploads/')),
-                ('is_visible', models.BooleanField(default=True)),
+                ('is_visible', models.BooleanField(default=False)),
                 ('upload_status', models.CharField(choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending', max_length=10)),
                 ('bounds', models.JSONField(blank=True, null=True)),
                 ('crs', models.CharField(blank=True, default='', max_length=50)),

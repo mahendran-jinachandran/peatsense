@@ -21,7 +21,7 @@ class Dataset(models.Model):
     )
 
     file = models.FileField(upload_to='uploads/')
-    is_visible = models.BooleanField(default=True)
+    is_visible = models.BooleanField(default=False)
     upload_status = models.CharField(
         max_length=10,
         choices=UploadStatus.choices,

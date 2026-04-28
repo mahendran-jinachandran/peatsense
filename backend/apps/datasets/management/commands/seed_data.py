@@ -53,6 +53,7 @@ class Command(BaseCommand):
             ),
             dataset_type='raster',
             file=f'uploads/{dest_filename}',
+            is_visible = True,
             upload_status='completed',
             uploaded_by=admin,
             **metadata
@@ -85,6 +86,7 @@ class Command(BaseCommand):
             ),
             dataset_type='vector',
             file=f'uploads/{dest_filename}',
+            is_visible = True,
             upload_status='completed',
             uploaded_by=admin,
             **metadata

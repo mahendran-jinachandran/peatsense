@@ -44,68 +44,60 @@ class RasterService:
             }
 
     @staticmethod
-    def to_png(file_path: str) -> tuple[bytes, dict]:
+    def to_png(file_path: str) -> tuple:
 
         with rasterio.open(file_path) as src:
-
             transform, width, height = calculate_default_transform(
                 src.crs,
-                RasterService.TARGET_CRS,
+                'EPSG:4326',
                 src.width,
                 src.height,
                 *src.bounds
             )
 
-
             reprojected_bands = []
             for band_index in range(1, src.count + 1):
-                destination = np.zeros(
-                    (height, width),
-                    dtype=np.uint8
-                )
-
+                destination = np.zeros((height, width), dtype=np.uint8)
                 reproject(
-                    source=rasterio.band(src, band_index),
-                    destination=destination,
-                    src_transform=src.transform,
-                    src_crs=src.crs,
-                    dst_transform=transform,
-                    dst_crs=RasterService.TARGET_CRS,
-                    resampling=Resampling.nearest
+                    source        = rasterio.band(src, band_index),
+                    destination   = destination,
+                    src_transform = src.transform,
+                    src_crs       = src.crs,
+                    dst_transform = transform,
+                    dst_crs       = 'EPSG:4326',
+                    resampling    = Resampling.nearest,
                 )
                 reprojected_bands.append(destination)
 
-
-            if len(reprojected_bands) >= 3:
-                rgb_array = np.dstack([
-                    reprojected_bands[0],
-                    reprojected_bands[1],
-                    reprojected_bands[2]
-                ])
-
-            else:
-                rgb_array = np.dstack([reprojected_bands[0]] * 3)
-
-            image = Image.fromarray(rgb_array.astype(np.uint8), 'RGB')
-            buffer = io.BytesIO()
-            image.save(buffer, format='PNG')
-            png_bytes = buffer.getvalue()
-
             bounds_wgs84 = transform_bounds(
-                src.crs,
-                RasterService.TARGET_CRS,
-                *src.bounds
+                src.crs, 'EPSG:4326', *src.bounds
             )
 
-            bounds = {
-                'west':  bounds_wgs84[0],
-                'south': bounds_wgs84[1],
-                'east':  bounds_wgs84[2],
-                'north': bounds_wgs84[3],
-            }
+        if len(reprojected_bands) >= 3:
+            image_array = np.dstack([
+                reprojected_bands[0],
+                reprojected_bands[1],
+                reprojected_bands[2],
+            ])
+        else:
+            image_array = np.dstack([reprojected_bands[0]] * 3)
 
-            return png_bytes, bounds
+        alpha      = np.any(image_array > 0, axis=2).astype(np.uint8) * 255
+        rgba_array = np.dstack([image_array, alpha])
+        image      = Image.fromarray(rgba_array.astype(np.uint8), 'RGBA')
 
+        png_buffer = io.BytesIO()
+        image.save(png_buffer, format='PNG')
+        png_buffer.seek(0)
+
+        bounds = {
+            'west':  bounds_wgs84[0],
+            'south': bounds_wgs84[1],
+            'east':  bounds_wgs84[2],
+            'north': bounds_wgs84[3],
+        }
+
+        return png_buffer, bounds
 
 class VectorService:
 
