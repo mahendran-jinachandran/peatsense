@@ -5,6 +5,9 @@ from rasterio.warp import calculate_default_transform, reproject, Resampling, tr
 from PIL import Image
 import io
 import os
+import os
+from django.conf import settings
+from PIL import Image as PILImage
 
 
 class RasterService:
@@ -98,6 +101,22 @@ class RasterService:
         }
 
         return png_buffer, bounds
+    
+    @staticmethod
+    def save_preview(file_path: str, dataset_id: int) -> tuple:
+        png_buffer, bounds = RasterService.to_png(file_path)
+
+        previews_dir = os.path.join(settings.MEDIA_ROOT, 'previews')
+        os.makedirs(previews_dir, exist_ok=True)
+
+        filename      = f'preview_dataset_{dataset_id}.png'
+        absolute_path = os.path.join(previews_dir, filename)
+        relative_path = f'previews/{filename}'
+
+        with open(absolute_path, 'wb') as f:
+            f.write(png_buffer.read())
+
+        return relative_path, bounds
 
 class VectorService:
 

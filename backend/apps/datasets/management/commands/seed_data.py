@@ -59,6 +59,13 @@ class Command(BaseCommand):
             **metadata
         )
 
+        preview_path, _ = RasterService.save_preview(
+            dest_path,
+            dataset.id
+        )
+        dataset.preview_image = preview_path
+        dataset.save()
+
         self.stdout.write(f'Raster seeded: {dataset.name}')
 
     def _seed_vector(self, admin):

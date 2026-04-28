@@ -33,6 +33,7 @@ class Migration(migrations.Migration):
                 ('geometry_type', models.CharField(blank=True, default='', max_length=50)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
+                ('preview_image', models.ImageField(blank=True, null=True, upload_to='previews/')),
                 ('uploaded_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='datasets', to=settings.AUTH_USER_MODEL)),
             ],
             options={

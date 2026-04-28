@@ -2,8 +2,6 @@ import io
 import os
 import time
 import logging
-
-import joblib
 import mlflow
 import mlflow.sklearn
 import numpy as np
@@ -31,7 +29,6 @@ class InferenceService:
 
     @staticmethod
     def run(job) -> dict:
- 
         mlflow.set_tracking_uri(settings.MLFLOW_TRACKING_URI)
         mlflow.set_experiment(EXPERIMENT_NAME)
 
@@ -50,11 +47,26 @@ class InferenceService:
                 model = mlflow.sklearn.load_model(MODEL_URI)
                 logger.info(f'Model loaded from MLflow: {MODEL_URI}')
 
-                file_path = job.dataset.file.path
+                if job.dataset.preview_image:
+                    logger.info('Using pre-processed preview PNG for inference')
 
-                pixels_2d, shape, bounds = InferenceService._read_raster(
-                    file_path
-                )
+                    preview_path = os.path.join(
+                        settings.MEDIA_ROOT,
+                        str(job.dataset.preview_image)
+                    )
+
+                    image       = Image.open(preview_path).convert('RGB')
+                    image_array = np.array(image)
+                    shape       = (image_array.shape[0], image_array.shape[1])
+                    pixels_2d   = image_array.reshape(-1, 3)
+                    bounds      = job.dataset.bounds or {}
+
+                else:
+                    logger.info('No preview PNG found — processing GeoTIFF directly')
+                    file_path = job.dataset.file.path
+                    pixels_2d, shape, bounds = InferenceService._read_raster(
+                        file_path
+                    )
 
                 logger.info(
                     f'Running KMeans prediction on '
@@ -63,7 +75,7 @@ class InferenceService:
                 )
 
                 predictions_flat = model.predict(pixels_2d)
-                predictions_2d = predictions_flat.reshape(shape)
+                predictions_2d   = predictions_flat.reshape(shape)
 
                 rgb_array, colour_legend = colourise(
                     predictions_2d,
@@ -99,7 +111,7 @@ class InferenceService:
                     'colour_legend':     colour_legend,
                     'mlflow_run_id':     mlflow_run_id,
                 }
-        
+
         except Exception as e:
             logger.error(f'Inference failed: {str(e)}', exc_info=True)
             job.status        = 'failed'

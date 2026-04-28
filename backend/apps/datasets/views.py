@@ -16,6 +16,8 @@ from .serializers import (
     DatasetUpdateSerializer,
 )
 from .services import RasterService, VectorService
+from django.http import FileResponse
+from django.conf import settings
 
 class DatasetListView(APIView):
     permission_classes = [AllowAny]
@@ -81,34 +83,39 @@ class DatasetRasterView(APIView):
             Dataset,
             pk=pk,
             dataset_type='raster',
-            is_visible=True
+            upload_status='completed'
         )
 
-        file_path = dataset.file.path
+        # Serve pre-processed preview if available
+        if dataset.preview_image:
+            preview_path = os.path.join(
+                settings.MEDIA_ROOT,
+                str(dataset.preview_image)
+            )
 
+            if os.path.exists(preview_path):
+                bounds = dataset.bounds or {}
+                response = FileResponse(
+                    open(preview_path, 'rb'),
+                    content_type='image/png'
+                )
+                response['X-Bounds-West']  = bounds.get('west', 0)
+                response['X-Bounds-South'] = bounds.get('south', 0)
+                response['X-Bounds-East']  = bounds.get('east', 0)
+                response['X-Bounds-North'] = bounds.get('north', 0)
+                response['Access-Control-Expose-Headers'] = (
+                    'X-Bounds-West, X-Bounds-South, '
+                    'X-Bounds-East, X-Bounds-North'
+                )
+                return response
+
+        # Fall back to processing on demand
         try:
-            png_bytes, bounds = RasterService.to_png(file_path)
-
-            response = HttpResponse(
-                png_bytes,
-                content_type='image/png'
-            )
-
- 
-            response['X-Bounds-West']  = bounds['west']
-            response['X-Bounds-South'] = bounds['south']
-            response['X-Bounds-East']  = bounds['east']
-            response['X-Bounds-North'] = bounds['north']
-            response['Access-Control-Expose-Headers'] = (
-                'X-Bounds-West, X-Bounds-South, '
-                'X-Bounds-East, X-Bounds-North'
-            )
-
-            return response
-
+            png_buffer, bounds = RasterService.to_png(dataset.file.path)
+            ...
         except Exception as e:
             return Response(
-                {'error': f'Failed to process raster: {str(e)}'},
+                {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -154,7 +161,6 @@ class DatasetUploadView(APIView):
 
     def post(self, request):
         serializer = DatasetUploadSerializer(data=request.data)
-
         if not serializer.is_valid():
             return Response(
                 serializer.errors,
@@ -167,12 +173,17 @@ class DatasetUploadView(APIView):
         )
 
         try:
-            file_path = dataset.file.path
-
             if dataset.dataset_type == 'raster':
-                metadata = RasterService.extract_metadata(file_path)
+                metadata = RasterService.extract_metadata(dataset.file.path)
+
+                preview_path, _ = RasterService.save_preview(
+                    dataset.file.path,
+                    dataset.id
+                )
+                dataset.preview_image = preview_path
+
             else:
-                metadata = VectorService.extract_metadata(file_path)
+                metadata = VectorService.extract_metadata(dataset.file.path)
 
             for key, value in metadata.items():
                 setattr(dataset, key, value)
@@ -180,19 +191,18 @@ class DatasetUploadView(APIView):
             dataset.upload_status = 'completed'
             dataset.save()
 
-            return Response(
-                DatasetDetailSerializer(dataset).data,
-                status=status.HTTP_201_CREATED
-            )
-
         except Exception as e:
             dataset.upload_status = 'failed'
             dataset.save()
-
             return Response(
-                {'error': f'Upload failed during processing: {str(e)}'},
+                {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+        return Response(
+            DatasetDetailSerializer(dataset).data,
+            status=status.HTTP_201_CREATED
+    )
 
 
 class DatasetUpdateView(APIView):
