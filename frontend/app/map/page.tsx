@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useAuth }      from '@/hooks/useAuth'
 import { useDatasets }  from '@/hooks/useDatasets'
@@ -25,7 +25,7 @@ const MapView = dynamic(
 
 export default function MapPage() {
 
-  const { user, logout }  = useAuth()
+  const { user, logout, isLoading: isAuthLoading } = useAuth()
   const [showUpload, setShowUpload] = useState(false)
 
   const {
@@ -55,7 +55,12 @@ export default function MapPage() {
     clearResult,
   } = useInference()
 
-  // Get all raster dataset IDs
+  useEffect(() => {
+    if (!isAuthLoading) {
+      refetch()
+    }
+  }, [user, isAuthLoading])
+
   const rasterIds = datasets
     .filter(d => d.dataset_type === 'raster')
     .map(d => d.id)
@@ -64,14 +69,11 @@ export default function MapPage() {
     const dataset = datasets.find(d => d.id === id)
 
     if (dataset?.dataset_type === 'raster') {
-      // Turning off an active raster → clear inference result
       if (isLayerActive(id) && result) {
         clearResult()
       }
-      // Only one raster at a time
       activateExclusiveLayer(id, rasterIds)
     } else {
-      // Vectors can be toggled freely
       toggleLayer(id)
     }
   }
