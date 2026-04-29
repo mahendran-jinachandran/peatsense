@@ -133,6 +133,12 @@ class VectorService:
             'bounds': bounds,
             'crs': RasterService.TARGET_CRS, 
         }
+    
+    @staticmethod
+    def read_geojson(file_path: str) -> dict:
+        with open(file_path, 'r') as f:
+            return json.load(f)
+
 
     @staticmethod
     def _calculate_bounds(features: list) -> dict:
