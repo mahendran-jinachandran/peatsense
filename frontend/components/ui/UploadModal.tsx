@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import axios from 'axios'
 import { api } from '@/services/api'
 import type { DatasetType } from '@/types'
 
@@ -18,6 +19,8 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
   const [error,       setError]       = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const MAX_SIZE = 200 * 1024 * 1024  // 200MB in bytes
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -28,6 +31,12 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
 
     if (!file) {
       setError('Please select a file.')
+      return
+    }
+
+    // Client-side file size check
+    if (file.size > MAX_SIZE) {
+      setError('File too large. Maximum size is 200MB.')
       return
     }
 
@@ -43,8 +52,15 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
       })
       onSuccess()
       onClose()
-    } catch {
-      setError('Upload failed. Please try again.')
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const message = err.response?.data?.error
+                     || err.response?.data?.detail
+                     || 'Upload failed. Please try again.'
+        setError(message)
+      } else {
+        setError('Upload failed. Please try again.')
+      }
     } finally {
       setIsUploading(false)
     }
@@ -134,6 +150,9 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 File
+                <span className="text-gray-400 text-xs ml-1">
+                  (max 200MB)
+                </span>
               </label>
               <div
                 onClick={() => fileInputRef.current?.click()}
@@ -143,7 +162,12 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
                            transition-colors"
               >
                 {file ? (
-                  <p className="text-sm text-gray-700">{file.name}</p>
+                  <div>
+                    <p className="text-sm text-gray-700">{file.name}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {(file.size / 1024 / 1024).toFixed(1)} MB
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-400">
                     Click to select a file
@@ -161,7 +185,10 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
 
             {/* Error */}
             {error && (
-              <p className="text-sm text-red-500">{error}</p>
+              <div className="bg-red-50 border border-red-200
+                              text-red-700 px-3 py-2 rounded text-sm">
+                {error}
+              </div>
             )}
 
             {/* Buttons */}

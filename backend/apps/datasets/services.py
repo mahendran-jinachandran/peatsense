@@ -11,13 +11,6 @@ from PIL import Image as PILImage
 
 
 class RasterService:
-    """
-    Handles all rasterio processing for GeoTIFF files.
-    Responsible for:
-    - Extracting metadata (bounds, CRS, band count, pixel size)
-    - Reprojecting from any CRS to WGS84 (EPSG:4326)
-    - Converting raster data to a PNG image for display on the map
-    """
 
     TARGET_CRS = 'EPSG:4326'  # what web maps use
 

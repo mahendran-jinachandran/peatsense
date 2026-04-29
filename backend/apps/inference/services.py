@@ -173,11 +173,7 @@ class InferenceService:
 
     @staticmethod
     def _save_result_png(rgb_array: np.ndarray, job_id: int) -> str:
-        """
-        Converts the RGB array to a PNG with transparency
-        for nodata pixels and saves it to disk.
-        Returns the relative path from MEDIA_ROOT.
-        """
+
         results_dir   = os.path.join(settings.MEDIA_ROOT, 'inference_results')
         os.makedirs(results_dir, exist_ok=True)
 
@@ -185,7 +181,6 @@ class InferenceService:
         absolute_path = os.path.join(results_dir, filename)
         relative_path = os.path.join('inference_results', filename)
 
-        # Make black nodata pixels transparent
         alpha      = np.any(rgb_array > 0, axis=2).astype(np.uint8) * 255
         rgba_array = np.dstack([rgb_array, alpha])
         image      = Image.fromarray(rgba_array.astype(np.uint8), 'RGBA')

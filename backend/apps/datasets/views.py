@@ -160,6 +160,14 @@ class DatasetUploadView(APIView):
     parser_classes     = [MultiPartParser, FormParser]
 
     def post(self, request):
+        file = request.FILES.get('file')
+
+        if file and file.size > 200 * 1024 * 1024:
+            return Response(
+                {'error': 'File too large. Maximum size is 200MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         serializer = DatasetUploadSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(
