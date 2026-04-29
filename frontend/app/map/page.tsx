@@ -25,7 +25,7 @@ const MapView = dynamic(
 
 export default function MapPage() {
 
-  const { user, logout } = useAuth()
+  const { user, logout }  = useAuth()
   const [showUpload, setShowUpload] = useState(false)
 
   const {
@@ -38,6 +38,7 @@ export default function MapPage() {
   const {
     activeLayers,
     toggleLayer,
+    activateExclusiveLayer,
     isLayerActive,
     deactivateLayer,
   } = useMapLayers()
@@ -53,6 +54,27 @@ export default function MapPage() {
     runInference,
     clearResult,
   } = useInference()
+
+  // Get all raster dataset IDs
+  const rasterIds = datasets
+    .filter(d => d.dataset_type === 'raster')
+    .map(d => d.id)
+
+  const handleToggleLayer = (id: number) => {
+    const dataset = datasets.find(d => d.id === id)
+
+    if (dataset?.dataset_type === 'raster') {
+      // Turning off an active raster → clear inference result
+      if (isLayerActive(id) && result) {
+        clearResult()
+      }
+      // Only one raster at a time
+      activateExclusiveLayer(id, rasterIds)
+    } else {
+      // Vectors can be toggled freely
+      toggleLayer(id)
+    }
+  }
 
   return (
     <div className="flex flex-col h-screen">
@@ -70,10 +92,12 @@ export default function MapPage() {
           isLoading={isLoading}
           activeLayers={activeLayers}
           isLayerActive={isLayerActive}
-          onToggleLayer={toggleLayer}
+          onToggleLayer={handleToggleLayer}
           onDeleteDataset={(id) => {
             deactivateLayer(id)
             deleteDataset(id)
+            // Clear inference result when dataset is deleted
+            clearResult()
           }}
           isStaff={user?.is_staff ?? false}
           result={result}

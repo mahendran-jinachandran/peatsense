@@ -13,6 +13,24 @@ export const useMapLayers = () => {
     }))
   }, [])
 
+  const activateExclusiveLayer = useCallback((
+    datasetId: number,
+    rasterIds: number[]
+  ) => {
+    setActiveLayers(prev => {
+      const next = { ...prev }
+
+      rasterIds.forEach(id => {
+        if (id !== datasetId) {
+          next[id] = false
+        }
+      })
+
+      next[datasetId] = !prev[datasetId]
+      return next
+    })
+  }, [])
+
   const isLayerActive = useCallback((datasetId: number): boolean => {
     return activeLayers[datasetId] === true
   }, [activeLayers])
@@ -31,6 +49,7 @@ export const useMapLayers = () => {
   return {
     activeLayers,
     toggleLayer,
+    activateExclusiveLayer,
     isLayerActive,
     deactivateLayer,
     deactivateAll,

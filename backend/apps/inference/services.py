@@ -74,6 +74,9 @@ class InferenceService:
                     f'with {job.n_clusters} clusters'
                 )
 
+                nodata_mask = np.all(pixels_2d == 0, axis=1)
+                nodata_mask_2d = nodata_mask.reshape(shape)
+
                 predictions_flat = model.predict(pixels_2d)
                 predictions_2d   = predictions_flat.reshape(shape)
 
@@ -85,6 +88,7 @@ class InferenceService:
 
                 result_image_path = InferenceService._save_result_png(
                     rgb_array,
+                    nodata_mask_2d,
                     job.id
                 )
 
@@ -170,9 +174,13 @@ class InferenceService:
         }
 
         return pixels_2d, shape, bounds
-
+    
     @staticmethod
-    def _save_result_png(rgb_array: np.ndarray, job_id: int) -> str:
+    def _save_result_png(
+        rgb_array:    np.ndarray,
+        nodata_mask:  np.ndarray,
+        job_id:       int
+    ) -> str:
 
         results_dir   = os.path.join(settings.MEDIA_ROOT, 'inference_results')
         os.makedirs(results_dir, exist_ok=True)
@@ -180,8 +188,7 @@ class InferenceService:
         filename      = f'result_job_{job_id}.png'
         absolute_path = os.path.join(results_dir, filename)
         relative_path = os.path.join('inference_results', filename)
-
-        alpha      = np.any(rgb_array > 0, axis=2).astype(np.uint8) * 255
+        alpha      = (~nodata_mask).astype(np.uint8) * 255
         rgba_array = np.dstack([rgb_array, alpha])
         image      = Image.fromarray(rgba_array.astype(np.uint8), 'RGBA')
         image.save(absolute_path, format='PNG')
