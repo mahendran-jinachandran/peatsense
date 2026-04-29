@@ -6,12 +6,6 @@ __pycache__/
 db.sqlite3
 media/
 mlflow_models/
-*.tif
-*.geojson
 node_modules/
 .next/
 venv/
-
-# Add to .gitignore
-echo "backend/data/kmeans_model" >> .gitignore
-echo "backend/data/*.tif" >> .gitignore
