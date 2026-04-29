@@ -28,8 +28,17 @@ class InferenceRunView(APIView):
             )
 
         validated = serializer.validated_data
-
         dataset = Dataset.objects.get(pk=validated['dataset_id'])
+
+        if (
+            not dataset.is_visible and
+            dataset.uploaded_by != request.user and
+            not request.user.is_staff
+        ):
+            return Response(
+                {'error': 'You do not have permission to run inference on this dataset.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         job = InferenceJob.objects.create(
             dataset       = dataset,

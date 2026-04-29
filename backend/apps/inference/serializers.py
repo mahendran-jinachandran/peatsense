@@ -28,7 +28,6 @@ class InferenceRunSerializer(serializers.Serializer):
             Dataset.objects.get(
                 pk=value,
                 dataset_type='raster',
-                is_visible=True,
                 upload_status='completed'
             )
         except Dataset.DoesNotExist:
