@@ -37,6 +37,12 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/datasets/')\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   frontend:
     build: ./frontend
@@ -48,7 +54,8 @@ services:
     environment:
       - NEXT_PUBLIC_API_URL=http://backend:8000
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   postgres_data:
