@@ -1,25 +1,29 @@
 'use client'
 
-import type { Dataset, ColourScheme, InferenceResult, ColourLegend } from '@/types'
+import { useState } from 'react'
+import { api } from '@/services/api'
+import type { Dataset, ColourScheme, InferenceResult } from '@/types'
 import InferencePanel from './InferencePanel'
 
 interface SidebarProps {
-  datasets:         Dataset[]
-  isLoading:        boolean
-  activeLayers:     { [id: number]: boolean }
-  isLayerActive:    (id: number) => boolean
-  onToggleLayer:    (id: number) => void
-  onDeleteDataset:  (id: number) => void
-  isStaff:          boolean
-  result:           InferenceResult | null
-  isRunning:        boolean
-  inferenceError:   string | null
-  nClusters:        number
-  colourScheme:     ColourScheme
+  datasets:             Dataset[]
+  isLoading:            boolean
+  activeLayers:         { [id: number]: boolean }
+  isLayerActive:        (id: number) => boolean
+  onToggleLayer:        (id: number) => void
+  onDeleteDataset:      (id: number) => void
+  isStaff:              boolean
+  currentUsername:      string | null
+  result:               InferenceResult | null
+  isRunning:            boolean
+  inferenceError:       string | null
+  nClusters:            number
+  colourScheme:         ColourScheme
   onNClustersChange:    (n: number) => void
   onColourSchemeChange: (scheme: ColourScheme) => void
-  onRunInference:   (datasetId: number) => void
-  onClearResult:    () => void
+  onRunInference:       (datasetId: number) => void
+  onClearResult:        () => void
+  onRefetch:            () => void
 }
 
 export default function Sidebar({
@@ -29,6 +33,7 @@ export default function Sidebar({
   onToggleLayer,
   onDeleteDataset,
   isStaff,
+  currentUsername,
   result,
   isRunning,
   inferenceError,
@@ -38,10 +43,29 @@ export default function Sidebar({
   onColourSchemeChange,
   onRunInference,
   onClearResult,
+  onRefetch,
 }: SidebarProps) {
+
+  const [togglingVisibility, setTogglingVisibility] = useState<number | null>(null)
 
   const rasterDatasets = datasets.filter(d => d.dataset_type === 'raster')
   const activeRaster   = rasterDatasets.find(d => isLayerActive(d.id))
+
+  const handleVisibilityToggle = async (dataset: Dataset) => {
+    setTogglingVisibility(dataset.id)
+    try {
+      await api.datasets.toggleVisibility(dataset.id, !dataset.is_visible)
+      onRefetch()
+    } catch {
+      // silently fail — dataset list will stay as is
+    } finally {
+      setTogglingVisibility(null)
+    }
+  }
+
+  const isOwner = (dataset: Dataset): boolean => {
+    return dataset.uploaded_by === currentUsername
+  }
 
   return (
     <div className="w-80 bg-white border-r border-gray-200
@@ -77,7 +101,7 @@ export default function Sidebar({
                 <p className="text-sm font-medium text-gray-800 truncate">
                   {dataset.name}
                 </p>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
                     dataset.dataset_type === 'raster'
                       ? 'bg-blue-50 text-blue-600'
@@ -86,7 +110,9 @@ export default function Sidebar({
                     {dataset.dataset_type}
                   </span>
                   {!dataset.is_visible && (
-                    <span className="text-xs text-gray-400">Hidden</span>
+                    <span className="text-xs text-gray-400">
+                      Hidden
+                    </span>
                   )}
                 </div>
               </div>
@@ -94,7 +120,24 @@ export default function Sidebar({
               {/* Controls */}
               <div className="flex items-center gap-1.5 shrink-0">
 
-                {/* Toggle */}
+                {/* Visibility Toggle — only for owner */}
+                {isOwner(dataset) && (
+                  <button
+                    onClick={() => handleVisibilityToggle(dataset)}
+                    disabled={togglingVisibility === dataset.id}
+                    title={dataset.is_visible ? 'Make private' : 'Make public'}
+                    className="px-2 py-1 rounded text-sm
+                               hover:bg-gray-100 transition-colors
+                               disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {togglingVisibility === dataset.id
+                      ? '...'
+                      : dataset.is_visible ? '👁' : '🚫'
+                    }
+                  </button>
+                )}
+
+                {/* Layer Toggle */}
                 <button
                   onClick={() => onToggleLayer(dataset.id)}
                   className={`px-2.5 py-1 rounded text-xs font-medium
@@ -107,8 +150,8 @@ export default function Sidebar({
                   {isLayerActive(dataset.id) ? 'On' : 'Off'}
                 </button>
 
-                {/* Delete (admin only) */}
-                {isStaff && (
+                {/* Delete — only for owner */}
+                {isOwner(dataset) && (
                   <button
                     onClick={() => {
                       if (confirm(`Delete "${dataset.name}"?`)) {
@@ -130,7 +173,7 @@ export default function Sidebar({
 
       </div>
 
-      {/* Inference Panel — shown when a raster is active */}
+      {/* Inference Panel */}
       {activeRaster && (
         <div className="p-4 border-t border-gray-200 shrink-0">
           <InferencePanel

@@ -96,10 +96,10 @@ export default function MapPage() {
           onDeleteDataset={(id) => {
             deactivateLayer(id)
             deleteDataset(id)
-            // Clear inference result when dataset is deleted
             clearResult()
           }}
           isStaff={user?.is_staff ?? false}
+          currentUsername={user?.username ?? null}
           result={result}
           isRunning={isRunning}
           inferenceError={inferenceError}
@@ -109,6 +109,7 @@ export default function MapPage() {
           onColourSchemeChange={setColourScheme}
           onRunInference={runInference}
           onClearResult={clearResult}
+          onRefetch={refetch}
         />
 
         <div className="flex-1 relative">

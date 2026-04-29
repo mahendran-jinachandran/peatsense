@@ -253,8 +253,7 @@ class DatasetDeleteView(APIView):
             {'message': 'Dataset deleted successfully.'},
             status=status.HTTP_204_NO_CONTENT
         )
-
-
+   
 class DatasetVisibilityView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -263,7 +262,7 @@ class DatasetVisibilityView(APIView):
 
         if dataset.uploaded_by != request.user:
             return Response(
-                {'error': 'You do not have permission to change visibility.'},
+                {'error': 'You can only change visibility of your own datasets.'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
@@ -272,15 +271,9 @@ class DatasetVisibilityView(APIView):
             data=request.data,
             partial=True
         )
-
         if serializer.is_valid():
             serializer.save()
-            return Response({
-                'id':         dataset.id,
-                'is_visible': dataset.is_visible,
-                'message':    'Visibility updated.'
-            })
-
+            return Response(serializer.data)
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
