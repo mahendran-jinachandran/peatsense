@@ -33,10 +33,8 @@ class DatasetListView(APIView):
         elif request.user.is_authenticated:
             # Regular user sees public + own datasets
             datasets = Dataset.objects.filter(
-                upload_status='completed'
-            ).filter(
-                db_models.Q(is_visible=True) |
-                db_models.Q(uploaded_by=request.user)
+                upload_status='completed',
+                uploaded_by=request.user
             ).select_related('uploaded_by')
 
         else:
