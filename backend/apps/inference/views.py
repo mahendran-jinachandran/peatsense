@@ -12,6 +12,7 @@ from .serializers import (
 )
 from .services import InferenceService
 from apps.datasets.models import Dataset
+from utils.colours import get_available_schemes
 
 
 class InferenceRunView(APIView):
@@ -30,11 +31,7 @@ class InferenceRunView(APIView):
         validated = serializer.validated_data
         dataset = Dataset.objects.get(pk=validated['dataset_id'])
 
-        if (
-            not dataset.is_visible and
-            dataset.uploaded_by != request.user and
-            not request.user.is_staff
-        ):
+        if (not dataset.is_visible and dataset.uploaded_by != request.user and not request.user.is_staff):
             return Response(
                 {'error': 'You do not have permission to run inference on this dataset.'},
                 status=status.HTTP_403_FORBIDDEN
@@ -106,6 +103,5 @@ class ColourSchemesView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        from utils.colours import get_available_schemes
         schemes = get_available_schemes()
         return Response({'colour_schemes': schemes})

@@ -30,11 +30,16 @@ class Dataset(models.Model):
 
     bounds = models.JSONField(null=True, blank=True)
     crs = models.CharField(max_length=50, blank=True, default='')
+
+    # Raster specific
     band_count = models.IntegerField(null=True, blank=True)
     pixel_width  = models.IntegerField(null=True, blank=True)
     pixel_height = models.IntegerField(null=True, blank=True)
+
+    #Vector specific
     feature_count = models.IntegerField(null=True, blank=True)
     geometry_type = models.CharField(max_length=50, blank=True, default='')
+    
     uploaded_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

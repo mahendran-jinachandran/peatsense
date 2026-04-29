@@ -12,7 +12,7 @@ from PIL import Image as PILImage
 
 class RasterService:
 
-    TARGET_CRS = 'EPSG:4326'  # what web maps use
+    TARGET_CRS = 'EPSG:4326'  # what web maps use WGS84
 
     @staticmethod
     def extract_metadata(file_path: str) -> dict:
@@ -45,7 +45,7 @@ class RasterService:
         with rasterio.open(file_path) as src:
             transform, width, height = calculate_default_transform(
                 src.crs,
-                'EPSG:4326',
+                RasterService.TARGET_CRS,
                 src.width,
                 src.height,
                 *src.bounds
@@ -60,13 +60,13 @@ class RasterService:
                     src_transform = src.transform,
                     src_crs       = src.crs,
                     dst_transform = transform,
-                    dst_crs       = 'EPSG:4326',
+                    dst_crs       = RasterService.TARGET_CRS,
                     resampling    = Resampling.nearest,
                 )
                 reprojected_bands.append(destination)
 
             bounds_wgs84 = transform_bounds(
-                src.crs, 'EPSG:4326', *src.bounds
+                src.crs, RasterService.TARGET_CRS, *src.bounds
             )
 
         if len(reprojected_bands) >= 3:
@@ -115,10 +115,6 @@ class VectorService:
 
     @staticmethod
     def extract_metadata(file_path: str) -> dict:
-        """
-        Reads a GeoJSON file and extracts metadata.
-        Returns feature_count, geometry_type, and bounds.
-        """
         with open(file_path, 'r') as f:
             geojson = json.load(f)
 
@@ -135,13 +131,8 @@ class VectorService:
             'feature_count': feature_count,
             'geometry_type': geometry_type,
             'bounds': bounds,
-            'crs': 'EPSG:4326', 
+            'crs': RasterService.TARGET_CRS, 
         }
-
-    @staticmethod
-    def read_geojson(file_path: str) -> dict:
-        with open(file_path, 'r') as f:
-            return json.load(f)
 
     @staticmethod
     def _calculate_bounds(features: list) -> dict:

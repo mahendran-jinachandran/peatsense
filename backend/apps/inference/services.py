@@ -68,15 +68,7 @@ class InferenceService:
                         file_path
                     )
 
-                logger.info(
-                    f'Running KMeans prediction on '
-                    f'{pixels_2d.shape[0]:,} pixels '
-                    f'with {job.n_clusters} clusters'
-                )
-
-                nodata_mask = np.all(pixels_2d == 0, axis=1)
-                nodata_mask_2d = nodata_mask.reshape(shape)
-
+                logger.info(f'Running KMeans prediction on {pixels_2d.shape[0]:,} pixels with {job.n_clusters} clusters')
                 predictions_flat = model.predict(pixels_2d)
                 predictions_2d   = predictions_flat.reshape(shape)
 
@@ -85,7 +77,9 @@ class InferenceService:
                     job.n_clusters,
                     job.colour_scheme,
                 )
-
+                
+                nodata_mask = np.all(pixels_2d == 0, axis=1)
+                nodata_mask_2d = nodata_mask.reshape(shape)
                 result_image_path = InferenceService._save_result_png(
                     rgb_array,
                     nodata_mask_2d,

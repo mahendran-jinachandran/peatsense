@@ -6,11 +6,6 @@ from .serializers import RegisterSerializer, UserSerializer
 
 
 class RegisterView(APIView):
-    """
-    POST /api/auth/register/
-    Creates a new user account.
-    Public — no token needed to register.
-    """
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -28,11 +23,6 @@ class RegisterView(APIView):
 
 
 class MeView(APIView):
-    """
-    GET /api/auth/me/
-    Returns the currently logged in user's info.
-    Protected — requires JWT token.
-    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):

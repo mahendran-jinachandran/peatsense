@@ -6,7 +6,6 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
-from django.db import models as db_models
 from .models import Dataset
 from .serializers import (
     DatasetListSerializer,
@@ -18,6 +17,7 @@ from .serializers import (
 from .services import RasterService, VectorService
 from django.http import FileResponse
 from django.conf import settings
+from django.db.models import Q
 
 class DatasetListView(APIView):
     permission_classes = [AllowAny]
@@ -31,10 +31,11 @@ class DatasetListView(APIView):
             ).select_related('uploaded_by')
 
         elif request.user.is_authenticated:
-            # Regular user sees public + own datasets
+            # Logged in user sees public + own datasets
             datasets = Dataset.objects.filter(
-                upload_status='completed',
-                uploaded_by=request.user
+                upload_status='completed'
+            ).filter(
+                Q(is_visible=True) | Q(uploaded_by=request.user)
             ).select_related('uploaded_by')
 
         else:
@@ -49,11 +50,6 @@ class DatasetListView(APIView):
 
 
 class DatasetDetailView(APIView):
-    """
-    GET /api/datasets/<id>/
-    Public endpoint — returns full detail of one dataset.
-    No login required.
-    """
     permission_classes = [AllowAny]
 
     def get(self, request, pk):
@@ -68,12 +64,6 @@ class DatasetDetailView(APIView):
 
 
 class DatasetRasterView(APIView):
-    """
-    GET /api/datasets/<id>/raster/
-    Public endpoint — serves the raster as a PNG image.
-    The frontend uses the bounds in the response header
-    to position the image on the Leaflet map.
-    """
     permission_classes = [AllowAny]
 
     def get(self, request, pk):
@@ -84,7 +74,7 @@ class DatasetRasterView(APIView):
             upload_status='completed'
         )
 
-        # Serve pre-processed preview if available
+        # Fast path — serve pre-processed preview if available
         if dataset.preview_image:
             preview_path = os.path.join(
                 settings.MEDIA_ROOT,
@@ -92,7 +82,7 @@ class DatasetRasterView(APIView):
             )
 
             if os.path.exists(preview_path):
-                bounds = dataset.bounds or {}
+                bounds   = dataset.bounds or {}
                 response = FileResponse(
                     open(preview_path, 'rb'),
                     content_type='image/png'
@@ -107,10 +97,23 @@ class DatasetRasterView(APIView):
                 )
                 return response
 
-        # Fall back to processing on demand
         try:
             png_buffer, bounds = RasterService.to_png(dataset.file.path)
-            ...
+
+            response = HttpResponse(
+                png_buffer.read(),
+                content_type='image/png'
+            )
+            response['X-Bounds-West']  = bounds['west']
+            response['X-Bounds-South'] = bounds['south']
+            response['X-Bounds-East']  = bounds['east']
+            response['X-Bounds-North'] = bounds['north']
+            response['Access-Control-Expose-Headers'] = (
+                'X-Bounds-West, X-Bounds-South, '
+                'X-Bounds-East, X-Bounds-North'
+            )
+            return response
+
         except Exception as e:
             return Response(
                 {'error': str(e)},
@@ -119,11 +122,6 @@ class DatasetRasterView(APIView):
 
 
 class DatasetVectorView(APIView):
-    """
-    GET /api/datasets/<id>/vector/
-    Public endpoint — serves the raw GeoJSON.
-    Leaflet reads this directly to draw polygons on the map.
-    """
     permission_classes = [AllowAny]
 
     def get(self, request, pk):
@@ -148,12 +146,6 @@ class DatasetVectorView(APIView):
 
 
 class DatasetUploadView(APIView):
-    """
-    POST /api/datasets/upload/
-    Protected endpoint — uploads a new raster or vector file.
-    Requires JWT token.
-    Automatically extracts and stores metadata after upload.
-    """
     permission_classes = [IsAuthenticated]
     parser_classes     = [MultiPartParser, FormParser]
 
@@ -212,11 +204,6 @@ class DatasetUploadView(APIView):
 
 
 class DatasetUpdateView(APIView):
-    """
-    PATCH /api/datasets/<id>/
-    Protected endpoint — edit name and description.
-    Requires JWT token. Only the owner can edit.
-    """
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
@@ -245,12 +232,7 @@ class DatasetUpdateView(APIView):
 
 
 class DatasetDeleteView(APIView):
-    """
-    DELETE /api/datasets/<id>/
-    Protected endpoint — deletes a dataset.
-    Requires JWT token. Only the owner can delete.
-    Also deletes the actual file from disk.
-    """
+
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
@@ -274,11 +256,6 @@ class DatasetDeleteView(APIView):
 
 
 class DatasetVisibilityView(APIView):
-    """
-    PATCH /api/datasets/<id>/visibility/
-    Protected endpoint — toggles public/private visibility.
-    Requires JWT token.
-    """
     permission_classes = [IsAuthenticated]
 
     def patch(self, request, pk):
