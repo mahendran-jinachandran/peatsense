@@ -39,7 +39,7 @@ PeatSense is a geospatial platform for classifying land cover in satellite image
 ### Clone and Run
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/mahendran-jinachandran/peatsense.git
 cd peatsense
 cp .env.example .env
 docker-compose up --build
