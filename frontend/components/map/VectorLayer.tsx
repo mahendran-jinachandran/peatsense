@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { GeoJSON } from 'react-leaflet'
+import { GeoJSON, useMap } from 'react-leaflet'
 import { api } from '@/services/api'
 import type { Dataset } from '@/types'
 
@@ -11,6 +11,7 @@ interface VectorLayerProps {
 
 export default function VectorLayer({ dataset }: VectorLayerProps) {
   const [geojsonData, setGeojsonData] = useState<GeoJSON.GeoJsonObject | null>(null)
+  const map = useMap()
 
   useEffect(() => {
     let cancelled = false
@@ -20,6 +21,14 @@ export default function VectorLayer({ dataset }: VectorLayerProps) {
         const data = await api.datasets.getVector(dataset.id)
         if (!cancelled) {
           setGeojsonData(data)
+
+          // Auto zoom to the vector layer using dataset bounds
+          if (dataset.bounds) {
+            map.fitBounds([
+              [dataset.bounds.south, dataset.bounds.west],
+              [dataset.bounds.north, dataset.bounds.east],
+            ], { padding: [20, 20] })
+          }
         }
       } catch (err) {
         console.error('Failed to load vector:', err)

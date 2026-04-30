@@ -77,6 +77,12 @@ class RasterService:
             ])
         else:
             image_array = np.dstack([reprojected_bands[0]] * 3)
+        
+        if image_array.max() > 255:
+            image_array = (
+                (image_array - image_array.min()) /
+                (image_array.max() - image_array.min()) * 255
+            ).astype(np.uint8)
 
         alpha      = np.any(image_array > 0, axis=2).astype(np.uint8) * 255
         rgba_array = np.dstack([image_array, alpha])

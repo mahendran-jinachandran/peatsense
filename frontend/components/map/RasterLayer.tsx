@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ImageOverlay } from 'react-leaflet'
+import { ImageOverlay, useMap } from 'react-leaflet'
 import { api } from '@/services/api'
 import type { Dataset } from '@/types'
 
@@ -12,6 +12,7 @@ interface RasterLayerProps {
 export default function RasterLayer({ dataset }: RasterLayerProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [bounds,   setBounds]   = useState<[[number,number],[number,number]] | null>(null)
+  const map = useMap()
 
   useEffect(() => {
     let cancelled = false
@@ -21,11 +22,16 @@ export default function RasterLayer({ dataset }: RasterLayerProps) {
         const data = await api.datasets.getRasterPng(dataset.id)
 
         if (!cancelled) {
-          setImageUrl(data.imageUrl)
-          setBounds([
+          const leafletBounds: [[number,number],[number,number]] = [
             [data.bounds.south, data.bounds.west],
             [data.bounds.north, data.bounds.east],
-          ])
+          ]
+
+          setImageUrl(data.imageUrl)
+          setBounds(leafletBounds)
+
+          // Auto zoom to the layer
+          map.fitBounds(leafletBounds, { padding: [20, 20] })
         }
       } catch (err) {
         console.error('Failed to load raster:', err)
